@@ -1,10 +1,10 @@
-# repo name
+# GFISHER Hierarchical Model Training
 
-Describe your project here
+Training pipelines for [hierarchical models](https://github.com/csbrown-noaa/hierarchical_yolo) trained on [the GFISHER survey](https://restoreactscienceprogram.noaa.gov/projects/reef-fish-survey) data, located [here](https://storage.googleapis.com/nmfs_odp_hq/nodd_tools/datasets/gfisher/annotations_worms.json)
 
-# Installation
+# Usage
 
-Put installation instructions here
+The pipeline is entirely located in the included jupyter notebook.  Please reference the notebook for more information.
 
 # Contributing
 
