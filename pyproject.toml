@@ -12,7 +12,9 @@ authors = [
 dependencies = [
   "hierarchical_yolo @ git+https://github.com/csbrown-noaa/hierarchical_yolo.git",
   "ultralytics",
-  "torch"
+  "torch",
+  "pycocowriter",
+  "pyworms"
 ]
 readme = "README.md"
 classifiers = [
