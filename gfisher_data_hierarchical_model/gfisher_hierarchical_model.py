@@ -7,12 +7,10 @@ import ultralytics
 import json
 import os
 
-DATASETS = ultralytics.settings['datasets_dir']
-DATA = os.path.join(DATASETS, 'gfisher')
-HIERARCHY_DATA = os.path.join(DATA, 'hierarchy_data')
-HIERARCHY = os.path.join(HIERARCHY_DATA, 'hierarchy.json')
-
-with open(HIERARCHY, 'r') as f:
+#with open(HIERARCHY, 'r') as f:
+#    GFISHER_HIERARCHY = json.load(f)
+GFISHER_HIERARCHY_JSON = resources.files('gfisher_data_hierarchical_model.models').joinpath('gfisher_hierarchy.json')
+with open(GFISHER_HIERARCHY_JSON, 'r') as f:
     GFISHER_HIERARCHY = json.load(f)
 
 YOLO_DATASET_YAML = resources.files('gfisher_data_hierarchical_model.models').joinpath('hierarchical_gfisher.yaml')
