@@ -261,4 +261,4 @@ names:
   259: Xanthichthys ringens
 path: /home/noaa_brown/datasets/gfisher
 train: hierarchical_annotations/images
-val: hierarchical_annotations/images
+val: hierarchical_annotations/val
