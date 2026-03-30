@@ -1,0 +1,264 @@
+names:
+  0: Acanthuriformes
+  1: Actinopteri
+  2: Actinopterygii
+  3: Albula
+  4: Albula vulpes
+  5: Albulidae
+  6: Albuliformes
+  7: Albulinae
+  8: Alectis
+  9: Alectis ciliaris
+  10: Anguilliformes
+  11: Animalia
+  12: Anisotremus
+  13: Anisotremus virginicus
+  14: Anomura
+  15: Anthiadidae
+  16: Archosargus
+  17: Archosargus probatocephalus
+  18: Arthropoda
+  19: Aulopiformes
+  20: Aulopoidei
+  21: Balistes
+  22: Balistes capriscus
+  23: Balistes vetula
+  24: Balistidae
+  25: Balistoidei
+  26: Biota
+  27: Bodianus
+  28: Bodianus pulchellus
+  29: Bodianus rufus
+  30: Brachyura
+  31: Calamus
+  32: Calamus bajonado
+  33: Calamus leucosteus
+  34: Calamus nodosus
+  35: Calamus proridens
+  36: Callionymidae
+  37: Callionymiformes
+  38: Canthidermis
+  39: Canthidermis sufflamen
+  40: Canthigaster
+  41: Canthigaster jamestyleri
+  42: Canthigaster rostrata
+  43: Carangaria incertae sedis
+  44: Carangidae
+  45: Carangiformes
+  46: Caranx
+  47: Caranx bartholomaei
+  48: Caranx crysos
+  49: Caranx ruber
+  50: Carcharhinidae
+  51: Carcharhiniformes
+  52: Carcharhinus
+  53: Carcharhinus falciformis
+  54: Carcharhinus plumbeus
+  55: Caulolatilus
+  56: Caulolatilus chrysops
+  57: Caulolatilus cyanops
+  58: Caulolatilus microps
+  59: Centropristis
+  60: Centropristis ocyurus
+  61: Centropristis philadelphica
+  62: Cephalopholis
+  63: Cephalopholis cruentata
+  64: Chaetodipterus
+  65: Chaetodipterus faber
+  66: Chaetodon
+  67: Chaetodon capistratus
+  68: Chaetodon ocellatus
+  69: Chaetodon sedentarius
+  70: Chaetodontidae
+  71: Chondrichthyes
+  72: Chordata
+  73: Chromis
+  74: Chromis enchrysurus
+  75: Chromis insolata
+  76: Clepticini
+  77: Crustacea
+  78: Decapoda
+  79: Decapterus
+  80: Decodon
+  81: Decodon puellaris
+  82: Dermatolepis
+  83: Dermatolepis inermis
+  84: Diplectrum
+  85: Diplectrum formosum
+  86: Elasmobranchii
+  87: Ephippidae
+  88: Epialtidae
+  89: Epinephelidae
+  90: Epinephelus
+  91: Epinephelus adscensionis
+  92: Epinephelus morio
+  93: Eubrachyura
+  94: Eucarida
+  95: Eumalacostraca
+  96: Eupercaria incertae sedis
+  97: Gadiformes
+  98: Galeomorphi
+  99: Gnathostomata
+  100: Gobiidae
+  101: Gobiiformes
+  102: Gonioplectrus
+  103: Gonioplectrus hispanus
+  104: Gymnothorax
+  105: Gymnothorax moringa
+  106: Gymnothorax saxicola
+  107: Haemulidae
+  108: Haemulinae
+  109: Haemulon
+  110: Haemulon album
+  111: Haemulon aurolineatum
+  112: Halichoeres
+  113: Halichoeres bathyphilus
+  114: Halichoeres bivittatus
+  115: Heterotremata
+  116: Holacanthus
+  117: Holacanthus bermudensis
+  118: Holocentridae
+  119: Holocentriformes
+  120: Holocentrinae
+  121: Holocentrus
+  122: Holocentrus adscensionis
+  123: Hypoplectrus
+  124: Hyporthodus
+  125: Hyporthodus flavolimbatus
+  126: Hyporthodus nigritus
+  127: Hypsigenyinae
+  128: Julidinae
+  129: Labridae
+  130: Lachnolaimini*
+  131: Lachnolaimus
+  132: Lachnolaimus maximus
+  133: Latilinae
+  134: Liopropoma
+  135: Liopropoma eukrines
+  136: Lutjanidae
+  137: Lutjanus
+  138: Lutjanus analis
+  139: Lutjanus apodus
+  140: Lutjanus campechanus
+  141: Lutjanus griseus
+  142: Lutjanus synagris
+  143: Lutjanus vivanus
+  144: Majoidea
+  145: Malacanthidae
+  146: Malacanthinae
+  147: Malacanthus
+  148: Malacanthus plumieri
+  149: Malacostraca
+  150: Microdesmidae
+  151: Monacanthidae
+  152: Monacanthus
+  153: Monacanthus tuckeri
+  154: Mullidae
+  155: Mulliformes
+  156: Multicrustacea
+  157: Muraena
+  158: Muraena retifera
+  159: Muraenidae
+  160: Muraeninae
+  161: Mycteroperca
+  162: Mycteroperca bonaci
+  163: Mycteroperca interstitialis
+  164: Mycteroperca microlepis
+  165: Mycteroperca phenax
+  166: Myripristinae
+  167: Neoselachii
+  168: Ophichthidae
+  169: Ophichthinae
+  170: Ophichthus
+  171: Ophichthus puncticeps
+  172: Opistognathidae
+  173: Opistognathus
+  174: Opistognathus aurifrons
+  175: Osteichthyes
+  176: Ostichthys
+  177: Ostichthys trachypoma
+  178: Ovalentaria incertae sedis
+  179: Pagrus
+  180: Pagrus pagrus
+  181: Paralichthyidae
+  182: Paranthias
+  183: Paranthias furcifer
+  184: Pareques
+  185: Pareques umbrosus
+  186: Perciformes
+  187: Percoidei
+  188: Phycidae
+  189: Pisinae
+  190: Pleocyemata
+  191: Pleuronectiformes
+  192: Pomacanthidae
+  193: Pomacanthus
+  194: Pomacanthus arcuatus
+  195: Pomacanthus paru
+  196: Pomacentridae
+  197: Priacanthidae
+  198: Priacanthus
+  199: Priacanthus arenatus
+  200: Pristigenys
+  201: Pristigenys alta
+  202: Pristipomoides
+  203: Prognathodes
+  204: Prognathodes aya
+  205: Pronotogrammus
+  206: Pronotogrammus martinicensis
+  207: Ptereleotrinae
+  208: Ptereleotris
+  209: Pteroinae
+  210: Pterois
+  211: Rhomboplites
+  212: Rhomboplites aurorubens
+  213: Sciaenidae
+  214: Scomberomorus
+  215: Scomberomorus maculatus
+  216: Scombridae
+  217: Scombriformes
+  218: Scombrinae
+  219: Scorpaenidae
+  220: Scorpaenoidei
+  221: Selachii
+  222: Selene
+  223: Selene vomer
+  224: Seriola
+  225: Seriola dumerili
+  226: Seriola fasciata
+  227: Seriola rivoliana
+  228: Seriola zonata
+  229: Serranidae
+  230: Serranus
+  231: Serranus annularis
+  232: Serranus atrobranchus
+  233: Serranus phoebe
+  234: Serranus subligarius
+  235: Serranus tortugarum
+  236: Sparidae
+  237: Sphyraena
+  238: Sphyraena barracuda
+  239: Sphyraenidae
+  240: Sphyrna
+  241: Sphyrna lewini
+  242: Sphyrnidae
+  243: Stenocionops
+  244: Stenocionops spinimanus
+  245: Stenotomus
+  246: Stenotomus caprinus
+  247: Syacium
+  248: Synodontidae
+  249: Teleostei
+  250: Tetraodontidae
+  251: Tetraodontiformes
+  252: Tetraodontoidei
+  253: Upeneus
+  254: Upeneus parvus
+  255: Urophycis
+  256: Urophycis regia
+  257: Vertebrata
+  258: Xanthichthys
+  259: Xanthichthys ringens
+path: /home/noaa_brown/datasets/gfisher
+train: hierarchical_annotations/images
+val: hierarchical_annotations/images

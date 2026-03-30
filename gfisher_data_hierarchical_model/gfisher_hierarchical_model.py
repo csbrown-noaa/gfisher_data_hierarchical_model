@@ -9,7 +9,7 @@ import os
 
 #with open(HIERARCHY, 'r') as f:
 #    GFISHER_HIERARCHY = json.load(f)
-GFISHER_HIERARCHY_JSON = resources.files('gfisher_data_hierarchical_model.models').joinpath('gfisher_hierarchy.json')
+GFISHER_HIERARCHY_JSON = resources.files('gfisher_data_hierarchical_model.models').joinpath('hierarchy.json')
 with open(GFISHER_HIERARCHY_JSON, 'r') as f:
     GFISHER_HIERARCHY = json.load(f)
 

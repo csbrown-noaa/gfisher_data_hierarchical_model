@@ -14,7 +14,8 @@ dependencies = [
   "ultralytics",
   "torch",
   "pycocowriter",
-  "pyworms"
+  "pyworms",
+  "requests-cache"
 ]
 readme = "README.md"
 classifiers = [
