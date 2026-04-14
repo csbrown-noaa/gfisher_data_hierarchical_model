@@ -27,16 +27,14 @@ def main():
     Phases:
     1. Fetches raw COCO data from GCP and aligns it to the WoRMS taxonomy.
     2. Performs Rarity-Stratified Split to generate Validation set.
-    3. Converts master datasets to YOLO format.
-    4. Generates the hierarchical curriculum datasets (maintains full network head).
-    5. Generates the flat baseline datasets (for standard YOLO ablation studies).
+    3. Performs Anchor YOLO Conversion to materialize/download image files.
     """
     parser = argparse.ArgumentParser(description="GFISHER End-to-End Data Orchestrator")
     parser.add_argument(
         '--data_dir', 
         type=str, 
         default=os.path.expanduser('~/datasets/gfisher'),
-        help="Target directory for the processed dataset (default: ~/datasets/gfisher_v2)"
+        help="Target directory for the processed dataset (default: ~/datasets/gfisher)"
     )
     args = parser.parse_args()
     
@@ -44,7 +42,7 @@ def main():
     os.makedirs(data_dir, exist_ok=True)
     
     print("=" * 60)
-    print("🚀 Initiating End-to-End GFISHER Data Pipeline")
+    print("🚀 Initiating GFISHER Data Staging Pipeline")
     print(f"Target Directory: {data_dir}")
     print("=" * 60)
 
@@ -99,22 +97,14 @@ def main():
     print(f"Deleting original ghost file to prevent double-dipping: {original_train_json_path}")
     os.remove(original_train_json_path)
 
-    # Step 3: Convert to YOLO
-    print("\n--- Phase 3: Master YOLO Conversion ---")
+    # Step 3: Anchor YOLO Conversion (Forces Image Downloads to Local Disk)
+    print("\n--- Phase 3: Anchor YOLO Conversion (Materializing Images) ---")
     # Filter out empty splits to prevent pycocowriter loops
     pycocowriter.coco2yolo.coco2yolo(data_dir, data_dir)
 
-
-    # Step 4: Build the Hierarchical Curriculum 
-    print("\n--- Phase 4: Hierarchical Curriculum Generation ---")
-    build_hierarchical_curriculum(data_dir=data_dir)
-
-    # Step 5: Build the Flat Baselines 
-    print("\n--- Phase 5: Flat Baseline Generation ---")
-    build_flat_baselines(data_dir=data_dir)
-
     print("\n" + "=" * 60)
-    print("✅ GFISHER Pipeline Complete! All datasets and configs are ready for training.")
+    print(f"✅ GFISHER Pre-Processing Complete! The staging directory is ready at: {data_dir}")
+    print("Next step: Pass this directory to the generic hierarchical_yolo/data_orchestrator.py")
     print("=" * 60)
 
 
