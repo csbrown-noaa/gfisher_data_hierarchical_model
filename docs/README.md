@@ -14,14 +14,14 @@ This project sits on top of three core foundational libraries:
 
 * **`hierarchical_yolo`**: DDP-ready overrides for the Ultralytics YOLOv8 architecture. It includes the training orchestrators that automatically stage curriculum training across the phylogenetic tree.
 
-## Phase 1: Data Preparation & Orchestration
+## Phase 1: Data Staging (Dataset-Specific)
 
-The data pipeline automatically downloads the raw GFISHER annotations, queries the **World Register of Marine Species (WoRMS)** API to build a unified taxonomy, performs a rarity-stratified Train/Val split, and builds the datasets needed for training.
+The first phase is isolated strictly to **data preparation and downloading**. The GFISHER staging orchestrator fetches annotations, aligns them to a taxonomy, splits the data, and downloads the physical image files to a local staging directory.
 
-To run the end-to-end data pipeline:
+To run the staging pipeline:
 
 ```bash
-python gfisher_data_orchestrator.py --data_dir ~/datasets/gfisher
+python gfisher_data_orchestrator.py --data_dir ~/datasets/gfisher_staging
 ```
 
 **What this does:**
@@ -30,21 +30,37 @@ python gfisher_data_orchestrator.py --data_dir ~/datasets/gfisher
 
 2. **Rarity-Stratified Split:** Splits the data 85/15 while ensuring rare species aren't swallowed by common ones, grouping by filename to prevent video-frame leakage.
 
-3. **Curriculum Generation:** Creates `alternate_depth/` datasets that map annotations up the tree while maintaining the full network head size.
+3. **Anchor YOLO Conversion:** Converts the data to a basic YOLO format specifically to force the download and materialization of all raw images to local disk (`~/datasets/gfisher_staging/train_stratified/images`, etc.).
 
-4. **Flat Baseline Generation:** Creates `alternate_depth_flat_models/` datasets. These are standard, densely-indexed YOLO datasets at specific tree depths used for the "Comparative Arena" ablation studies.
+## Phase 2: Workspace Compilation (Generic)
 
-## Phase 2: Training the Hierarchical Curriculum
+Once the raw data is safely staged on disk, we use the generic "Compiler" from the `hierarchical_yolo` library. This script works entirely offline to build a specialized, symlink-driven workspace for hierarchical and flat ablation studies without duplicating heavy image files.
 
-With the data prepared, we use the abstracted `train` orchestrator from the pip-installed `hierarchical_yolo` library.
+```bash
+python -m hierarchical_yolo.data_orchestrator \
+    --source_dir ~/datasets/gfisher_staging \
+    --workspace_dir ~/datasets/gfisher_workspace
+```
+
+**What this does:**
+
+1. **Populates Master Clean Room:** Isolates the validated COCO JSONs and taxonomy.
+
+2. **Curriculum Generation:** Creates the `tier_yolo_full_head/` datasets mapping annotations up the tree while maintaining the full network head shape.
+
+3. **Flat Baseline Generation:** Creates `tier_yolo_flat_specialists/` datasets. These are standard, densely-indexed YOLO datasets at specific tree depths used for the "Comparative Arena" ablation studies.
+
+## Phase 3: Training the Hierarchical Curriculum
+
+With the compiled workspace ready, we use the abstracted `train` orchestrator.
 
 This module performs **Staged Curriculum Training**. It passes the weights sequentially from shallow levels of the taxonomy (e.g., broad families) down to the final deep classes (e.g., species), locking in generalized hierarchical features before attempting fine-grained classification.
 
-To launch training, point the module to your orchestrated data directory:
+To launch training, point the module to your compiled workspace:
 
 ```bash
 python -m hierarchical_yolo.train \
-    --data_dir ~/datasets/gfisher \
+    --data_dir ~/datasets/gfisher_workspace \
     --model_dir ~/Models/runs \
     --project_name hierarchical_gfisher_v1 \
     --base_model yolov8n.pt \
@@ -57,19 +73,19 @@ python -m hierarchical_yolo.train \
 **Locating Your Final Model:** Because the curriculum trainer stages the weights through the tree, your final, fully-trained model weights will be located in the deepest run folder (zero-padded to 3 digits). For example:
 `~/Models/runs/hierarchical_gfisher_v1/curriculum_depth_00X/weights/best.pt`
 
-## Phase 3: The Comparative Arena (Flat Baselines)
+## Phase 4: The Comparative Arena (Flat Baselines)
 
 To objectively evaluate the hierarchical model's performance, it is compared against standard YOLO models trained at specific taxonomic depths (e.g., a model that *only* knows about Families).
 
-The data orchestrator already built these datasets in `~/datasets/gfisher/alternate_depth_flat_models/`.
+The generic orchestrator already built these datasets inside the workspace under `tier_yolo_flat_specialists/`.
 
 To train a flat baseline (e.g., for depth 003), use the standard Ultralytics CLI. **Note:** Ensure you use the same `project` name as your curriculum run to keep your experiments grouped (see Experiment Tracking below).
 
 ```bash
-yolo train data=~/datasets/gfisher/alternate_depth_flat_models/003/train.yaml model=yolov8n.pt project=~/Models/runs/hierarchical_gfisher_v1 name=flat_depth_003 epochs=30 imgsz=640
+yolo train data=~/datasets/gfisher_workspace/tier_yolo_flat_specialists/003/train.yaml model=yolov8n.pt project=~/Models/runs/hierarchical_gfisher_v1 name=flat_depth_003 epochs=30 imgsz=640
 ```
 
-## Phase 4: Experiment Tracking & Reproducibility
+## Phase 5: Experiment Tracking & Reproducibility
 
 To ensure scientific traceability, this pipeline utilizes an **Experiment Namespace Strategy** built on top of native Ultralytics logging.
 
@@ -89,23 +105,27 @@ This generates a clean **Traceability Matrix** in your output directory:
 
 **Hyperparameter Logging:** You do not need to manually record your training configurations. For every run, an immutable `args.yaml` file is automatically generated inside the run folder. This file contains the exact hyperparameters, augmentations, and learning rates used, ensuring that every weight file is scientifically reproducible. Grouping runs by `--project_name` allows tracking tools (like TensorBoard or Weights & Biases) to instantly overlay and compare loss curves across the entire taxonomy.
 
-## Phase 5: Inference & Prediction Export
+## Phase 6: Inference & Prediction Export
 
 Once your hierarchical model is trained, you can run inference to generate a viewer-compatible COCO JSON.
 
 Unlike standard NMS which blindly filters by the global argmax, this prediction module anchors at the taxonomic roots and exports the **full soft score vector (marginal probabilities)** for every surviving bounding box. This allows downstream web viewers to dynamically filter predictions at any depth of the tree.
 
+Instead of relying on brittle manual URL prefixes, the pipeline securely routes predictions back to the original image URLs by mapping directly against the raw staging datasets.
+
 ```bash
 python -m hierarchical_yolo.predict \
-    --data_dir ~/datasets/gfisher \
+    --data_dir ~/datasets/gfisher_workspace \
+    --source_dir ~/datasets/gfisher_staging \
     --model_dir ~/Models/runs \
     --project_name hierarchical_gfisher_v1 \
     --split val \
-    --url_prefix "https://storage.googleapis.com/your-bucket/images/" \
     --output hierarchical_val_predictions.json
 ```
 
 **Arguments:**
+
+* `--source_dir`: (Required) Path to the original data staging directory. Used to natively extract the original image URLs from the raw COCO JSONs, guaranteeing accurate web links.
 
 * `--weights`: (Optional) Path to specific `best.pt`. If omitted, it automatically finds the latest run in the project directory.
 
@@ -113,12 +133,11 @@ python -m hierarchical_yolo.predict \
 
 * `--nms_conf_thres`: (Default 0.01) A very permissive confidence threshold to cast a wide net for downstream soft-filtering.
 
-
 The pipeline is entirely located in the included jupyter notebook.  Please reference the notebook for more information.
 
 # Contributing
 
-We would love to have your contributions that improve current functionality, fix bugs, or add new features.  See [the contributing guidelines](CONTRIBUTING.md) for more info.
+We would love to have your contributions that improve current functionality, fix bugs, or add new features.  See [the contributing guidelines](https://www.google.com/search?q=CONTRIBUTING.md) for more info.
 
 # Disclaimer
 
@@ -131,3 +150,4 @@ processes, or services by service mark, trademark, manufacturer, or otherwise, d
 imply their endorsement, recommendation or favoring by the Department of Commerce. The Department
 of Commerce seal and logo, or the seal and logo of a DOC bureau, shall not be used in any manner to
 imply endorsement of any commercial product or activity by DOC or the United States Government.
+
