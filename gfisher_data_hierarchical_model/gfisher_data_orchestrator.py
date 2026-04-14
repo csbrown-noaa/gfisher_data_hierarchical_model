@@ -3,11 +3,7 @@ import json
 import glob
 import argparse
 
-# Import the orchestrator functions based on our pipeline architecture
-try:
-    from coco_worms_expansion import expand_and_align_dataset
-except ImportError:
-    from hierarchical_loss.worms_expander import expand_and_align_dataset
+from hierarchical_loss.worms_expander import expand_and_align_dataset
 
 from hierarchical_yolo.hierarchical_curriculum_builder import build_hierarchical_curriculum
 from hierarchical_yolo.flat_baseline_builder import build_flat_baselines
