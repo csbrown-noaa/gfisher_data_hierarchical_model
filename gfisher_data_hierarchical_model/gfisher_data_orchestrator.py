@@ -1,12 +1,9 @@
 import os
 import json
-import glob
 import argparse
+import urllib.request
 
-from hierarchical_loss.worms_expander import expand_and_align_dataset
-
-from hierarchical_yolo.hierarchical_curriculum_builder import build_hierarchical_curriculum
-from hierarchical_yolo.flat_baseline_builder import build_flat_baselines
+from hierarchical_loss.worms_expander import WormsTaxonomyProvider
 import pycocowriter.coco2yolo
 from pycocowriter.coco_split_utils import rarity_stratified_split
 
@@ -21,9 +18,10 @@ def main():
     Executes the end-to-end data preparation pipeline for the GFISHER dataset.
     
     Phases:
-    1. Fetches raw COCO data from GCP and aligns it to the WoRMS taxonomy.
+    1. Fetches raw COCO data from GCP.
     2. Performs Rarity-Stratified Split to generate Validation set.
-    3. Performs Anchor YOLO Conversion to materialize/download image files.
+    3. Harvests the WoRMS taxonomy and saves the master hierarchy tree.
+    4. Performs Anchor YOLO Conversion to materialize/download image files.
     """
     parser = argparse.ArgumentParser(description="GFISHER End-to-End Data Orchestrator")
     parser.add_argument(
@@ -42,32 +40,19 @@ def main():
     print(f"Target Directory: {data_dir}")
     print("=" * 60)
 
-    # Step 1: Fetch, expand taxonomy, and align the datasets
-    # This automatically categorizes them into 'train' and 'test' based on the URL strings
-    print("\n--- Phase 1: Ingestion & WoRMS Alignment ---")
-    expand_and_align_dataset(
-        data_dir=data_dir, 
-        coco_sources=[TRAIN_DATA_URL, TEST_DATA_URL]
-    )
+    # Step 1: Fetch Raw Data
+    print("\n--- Phase 1: Fetching Raw Annotations ---")
+    print(f"Downloading Training Data: {TRAIN_DATA_URL}")
+    train_req = urllib.request.urlopen(TRAIN_DATA_URL)
+    train_coco_dict = json.loads(train_req.read())
+
+    print(f"Downloading Testing Data: {TEST_DATA_URL}")
+    test_req = urllib.request.urlopen(TEST_DATA_URL)
+    test_coco_dict = json.loads(test_req.read())
 
     # Step 2: The Strategic Chokepoint (Train/Val Split)
     print("\n--- Phase 2: Rarity Stratified Split (Train/Val) ---")
-    # 1. Locate the freshly generated training JSON
-    train_json_pattern = os.path.join(data_dir, "train_*_aligned.json")
-    train_files = glob.glob(train_json_pattern)
-    
-    if not train_files:
-        raise FileNotFoundError(f"Could not find aligned training JSON matching {train_json_pattern}. Did Phase 1 fail?")
-        
-    original_train_json_path = train_files[0]
-    print(f"Intercepting aligned data: {original_train_json_path}")
-    
-    # 2. Load the JSON into memory
-    with open(original_train_json_path, 'r') as f:
-        train_coco_dict = json.load(f)
-        
-    # 3. Execute the Sequence-Aware Rarity Split
-    print("Executing sequential, rarity-stratified 85/15 split...")
+    print("Executing sequential, rarity-stratified 85/15 split on raw training data...")
     train_split, val_split = rarity_stratified_split(
         coco_dict=train_coco_dict, 
         split_ratios=[0.85, 0.15], 
@@ -75,27 +60,39 @@ def main():
         seed=42                  # Locks the split mathematically across all runs
     )
     
-    # 4. Save the physically separated dictionaries
-    new_train_path = os.path.join(data_dir, "train_stratified.json")
-    new_val_path = os.path.join(data_dir, "val_stratified.json")
+    # Save the physically separated dictionaries
+    train_path = os.path.join(data_dir, "train.json")
+    val_path = os.path.join(data_dir, "val.json")
+    test_path = os.path.join(data_dir, "test.json")
     
-    print(f"Saving Train Split ({len(train_split['images'])} images) to {new_train_path}")
-    with open(new_train_path, 'w') as f:
+    print(f"Saving Train Split ({len(train_split['images'])} images) to {train_path}")
+    with open(train_path, 'w') as f:
         json.dump(train_split, f)
         
-    print(f"Saving Val Split ({len(val_split['images'])} images) to {new_val_path}")
-    with open(new_val_path, 'w') as f:
+    print(f"Saving Val Split ({len(val_split['images'])} images) to {val_path}")
+    with open(val_path, 'w') as f:
         json.dump(val_split, f)
         
-    # 5. ASSASSINATE THE GHOST FILE
-    # If we don't do this, Pycocowriter will find it and merge it with our new splits,
-    # doubling the dataset and leaking validation images back into training.
-    print(f"Deleting original ghost file to prevent double-dipping: {original_train_json_path}")
-    os.remove(original_train_json_path)
+    print(f"Saving Test Split ({len(test_coco_dict['images'])} images) to {test_path}")
+    with open(test_path, 'w') as f:
+        json.dump(test_coco_dict, f)
 
-    # Step 3: Anchor YOLO Conversion (Forces Image Downloads to Local Disk)
-    print("\n--- Phase 3: Anchor YOLO Conversion (Materializing Images) ---")
-    # Filter out empty splits to prevent pycocowriter loops
+    # Step 3: Taxonomy Harvesting
+    print("\n--- Phase 3: WoRMS Taxonomy Harvesting ---")
+    print("Scanning categories and querying WoRMS API for full lineage...")
+    provider = WormsTaxonomyProvider(use_cache=True)
+    # The provider handles combining unique classes internally
+    provider.build_master_hierarchy(train_split, val_split, test_coco_dict)
+    
+    hierarchy_path = os.path.join(data_dir, "hierarchy.json")
+    with open(hierarchy_path, 'w') as f:
+        json.dump(provider.hierarchy_tree, f, indent=4)
+    print(f"Master hierarchy tree saved to: {hierarchy_path}")
+
+    # Step 4: Anchor YOLO Conversion (Forces Image Downloads to Local Disk)
+    print("\n--- Phase 4: Anchor YOLO Conversion (Materializing Images) ---")
+    # This will parse train/val/test JSONs, create train/images, val/images, test/images,
+    # and download everything locally. We ignore the generated YOLO label .txt files.
     pycocowriter.coco2yolo.coco2yolo(data_dir, data_dir)
 
     print("\n" + "=" * 60)
