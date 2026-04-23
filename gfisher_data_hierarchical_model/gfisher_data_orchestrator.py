@@ -20,8 +20,9 @@ def main():
     Phases:
     1. Fetches raw COCO data from GCP.
     2. Performs Rarity-Stratified Split to generate Validation set.
-    3. Harvests the WoRMS taxonomy and saves the master hierarchy tree.
+    3. Harvests the WoRMS taxonomy into memory.
     4. Performs Anchor YOLO Conversion to materialize/download image files.
+    5. Saves the master hierarchy tree to avoid pycocowriter parsing conflicts.
     """
     parser = argparse.ArgumentParser(description="GFISHER End-to-End Data Orchestrator")
     parser.add_argument(
@@ -83,17 +84,19 @@ def main():
     provider = WormsTaxonomyProvider(use_cache=True)
     # The provider handles combining unique classes internally
     provider.build_master_hierarchy(train_split, val_split, test_coco_dict)
-    
-    hierarchy_path = os.path.join(data_dir, "hierarchy.json")
-    with open(hierarchy_path, 'w') as f:
-        json.dump(provider.hierarchy_tree, f, indent=4)
-    print(f"Master hierarchy tree saved to: {hierarchy_path}")
 
     # Step 4: Anchor YOLO Conversion (Forces Image Downloads to Local Disk)
     print("\n--- Phase 4: Anchor YOLO Conversion (Materializing Images) ---")
     # This will parse train/val/test JSONs, create train/images, val/images, test/images,
     # and download everything locally. We ignore the generated YOLO label .txt files.
     pycocowriter.coco2yolo.coco2yolo(data_dir, data_dir)
+
+    # Step 5: Save Hierarchy
+    print("\n--- Phase 5: Saving Master Hierarchy ---")
+    hierarchy_path = os.path.join(data_dir, "hierarchy.json")
+    with open(hierarchy_path, 'w') as f:
+        json.dump(provider.hierarchy_tree, f, indent=4)
+    print(f"Master hierarchy tree saved to: {hierarchy_path}")
 
     print("\n" + "=" * 60)
     print(f"✅ GFISHER Pre-Processing Complete! The staging directory is ready at: {data_dir}")
