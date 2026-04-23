@@ -16,7 +16,7 @@ This project sits on top of three core foundational libraries:
 
 ## Phase 1: Data Staging (Dataset-Specific)
 
-The first phase is isolated strictly to **data preparation and downloading**. The GFISHER staging orchestrator fetches annotations, aligns them to a taxonomy, splits the data, and downloads the physical image files to a local staging directory.
+The first phase is isolated strictly to **data preparation and downloading**. The GFISHER staging orchestrator fetches annotations, splits the raw data, harvests the taxonomic tree into memory, downloads the physical image files to a local staging directory, and finally saves the master taxonomy.
 
 To run the staging pipeline:
 
@@ -26,11 +26,11 @@ python gfisher_data_orchestrator.py --data_dir ~/datasets/gfisher_staging
 
 **What this does:**
 
-1. **WoRMS Alignment:** Fetches the active WoRMS tree, resolves synonyms, and creates a mathematically contiguous master hierarchy (`hierarchy.json`).
-
-2. **Rarity-Stratified Split:** Splits the data 85/15 while ensuring rare species aren't swallowed by common ones, grouping by filename to prevent video-frame leakage.
-
-3. **Anchor YOLO Conversion:** Converts the data to a basic YOLO format specifically to force the download and materialization of all raw images to local disk (`~/datasets/gfisher_staging/train_stratified/images`, etc.).
+1. **Fetch Raw Annotations:** Downloads the raw COCO JSONs directly from GCP into memory.
+2. **Rarity-Stratified Split:** Splits the raw training data 85/15 while ensuring rare species aren't swallowed by common ones, grouping by filename to prevent video-frame leakage.
+3. **WoRMS Taxonomy Harvesting:** Scans the raw category names and queries the WoRMS API to build the full taxonomic lineage in memory. *Note: The dataset categories remain in their raw, unaligned ID space at this stage.*
+4. **Image Materialization:** Parses the original image URLs and directly downloads all raw images to local disk (`~/datasets/gfisher_staging/train/images`, etc.). Bypassing the full YOLO conversion wrapper avoids strict metadata assertions, allowing the staging script to operate smoothly on raw, unaligned datasets.
+5. **Save Master Hierarchy:** Writes the `hierarchy.json` file to the staging directory *after* image materialization is complete. This defensive ordering prevents upstream tools from crashing when aggressively globbing for COCO files during the image download phase.
 
 ## Phase 2: Workspace Compilation (Generic)
 
@@ -44,10 +44,8 @@ python -m hierarchical_yolo.data_orchestrator \
 
 **What this does:**
 
-1. **Populates Master Clean Room:** Isolates the validated COCO JSONs and taxonomy.
-
+1. **Universal Taxonomy Alignment (The Clean Room):** Uses the `HierarchicalCocoAligner` to map the raw, disjointed category IDs from the staging datasets into a mathematically contiguous, 1-to-N integer index space required by the math engine.
 2. **Curriculum Generation:** Creates the `tier_yolo_full_head/` datasets mapping annotations up the tree while maintaining the full network head shape.
-
 3. **Flat Baseline Generation:** Creates `tier_yolo_flat_specialists/` datasets. These are standard, densely-indexed YOLO datasets at specific tree depths used for the "Comparative Arena" ablation studies.
 
 ## Phase 3: Training the Hierarchical Curriculum
