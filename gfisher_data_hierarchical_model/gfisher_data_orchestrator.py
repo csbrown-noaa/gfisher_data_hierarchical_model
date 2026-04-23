@@ -21,7 +21,7 @@ def main():
     1. Fetches raw COCO data from GCP.
     2. Performs Rarity-Stratified Split to generate Validation set.
     3. Harvests the WoRMS taxonomy into memory.
-    4. Performs Anchor YOLO Conversion to materialize/download image files.
+    4. Materializes/downloads image files from COCO URLs.
     5. Saves the master hierarchy tree to avoid pycocowriter parsing conflicts.
     """
     parser = argparse.ArgumentParser(description="GFISHER End-to-End Data Orchestrator")
@@ -85,11 +85,12 @@ def main():
     # The provider handles combining unique classes internally
     provider.build_master_hierarchy(train_split, val_split, test_coco_dict)
 
-    # Step 4: Anchor YOLO Conversion (Forces Image Downloads to Local Disk)
-    print("\n--- Phase 4: Anchor YOLO Conversion (Materializing Images) ---")
-    # This will parse train/val/test JSONs, create train/images, val/images, test/images,
-    # and download everything locally. We ignore the generated YOLO label .txt files.
-    pycocowriter.coco2yolo.coco2yolo(data_dir, data_dir)
+    # Step 4: Image Materialization (Direct Download)
+    print("\n--- Phase 4: Image Materialization ---")
+    # This directly parses train/val/test JSONs to download their images locally.
+    # By bypassing the full coco2yolo conversion wrapper, we avoid triggering strict YOLO
+    # metadata assertions on our raw, unaligned datasets.
+    pycocowriter.coco2yolo.download_coco_images(data_dir, data_dir)
 
     # Step 5: Save Hierarchy
     print("\n--- Phase 5: Saving Master Hierarchy ---")
