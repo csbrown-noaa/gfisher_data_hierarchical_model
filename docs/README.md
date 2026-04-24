@@ -58,7 +58,7 @@ To launch training, point the module to your compiled workspace:
 
 ```bash
 python -m hierarchical_yolo.train \
-    --data_dir ~/datasets/gfisher_workspace \
+    --workspace_dir ~/datasets/gfisher_workspace \
     --model_dir ~/Models/runs \
     --project_name hierarchical_gfisher_v1 \
     --base_model yolov8n.pt \
@@ -113,8 +113,7 @@ Instead of relying on brittle manual URL prefixes, the pipeline securely routes 
 
 ```bash
 python -m hierarchical_yolo.predict \
-    --data_dir ~/datasets/gfisher_workspace \
-    --source_dir ~/datasets/gfisher_staging \
+    --workspace_dir ~/datasets/gfisher_workspace \
     --model_dir ~/Models/runs \
     --project_name hierarchical_gfisher_v1 \
     --split val \
@@ -130,8 +129,6 @@ python -m hierarchical_yolo.predict \
 * `--nms_iou_thres`: (Default 0.7) IoU threshold for Non-Max Suppression.
 
 * `--nms_conf_thres`: (Default 0.01) A very permissive confidence threshold to cast a wide net for downstream soft-filtering.
-
-The pipeline is entirely located in the included jupyter notebook.  Please reference the notebook for more information.
 
 # Contributing
 
