@@ -4,7 +4,6 @@ import argparse
 import shutil
 
 from pycocowriter.cocomerge import coco_filter_categories
-from hierarchical_yolo.data_orchestrator import build_hierarchical_workspace
 
 def main():
     """
@@ -15,7 +14,6 @@ def main():
     2. Identifies all species-level categories (exactly two words).
     3. Filters train/val/test JSONs to drop non-species annotations and their orphaned images.
     4. Reconstructs a filtered staging directory with symlinked image vaults.
-    5. Triggers the generic hierarchical workspace compiler.
     """
     parser = argparse.ArgumentParser(description="GFISHER Species-Only Data Orchestrator")
     parser.add_argument(
@@ -30,21 +28,14 @@ def main():
         required=True,
         help="Target directory for the newly filtered staging JSONs and symlinks"
     )
-    parser.add_argument(
-        '--workspace_dir', 
-        type=str, 
-        required=True,
-        help="Target directory for the compiled YOLO datasets (passed to data_orchestrator)"
-    )
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
 
     print("=" * 60)
-    print("🔬 Initiating Species-Only Dataset Filter & Workspace Build")
+    print("🔬 Initiating Species-Only Dataset Filter (Staging)")
     print(f"Staging Source: {args.staging_source}")
     print(f"Filtered Staging Output: {args.output_dir}")
-    print(f"Final Workspace: {args.workspace_dir}")
     print("=" * 60)
 
     # Phase 1: Load hierarchy and extract species names (Exactly two words)
@@ -108,15 +99,10 @@ def main():
                 os.symlink(src_img_dir, dst_img_dir)
                 print(f"Symlinked physical image vault: {split_dir}")
 
-    # Phase 4: Trigger the Workspace Build
-    print(f"\n--- Phase 4: Compiling YOLO Workspace ---")
-    # This fires off the identical logic used for the full dataset, meaning your 
-    # flat_baseline_builder and hierarchical_curriculum_builder will work natively 
-    # on this truncated species-only dataset!
-    build_hierarchical_workspace(
-        source_dir=args.output_dir,
-        workspace_dir=args.workspace_dir
-    )
+    print("\n" + "=" * 60)
+    print(f"✅ Species-Only Staging Complete! The staging directory is ready at: {args.output_dir}")
+    print("Next step: Pass this directory to the generic hierarchical_yolo/data_orchestrator.py")
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()
