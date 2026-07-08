@@ -3,8 +3,8 @@
 # ==========================================
 # SHARED CONFIGURATION
 # ==========================================
-WORKSPACE="~/datasets/gfisher_species_only_hierarchical_workspace"
-MODEL_DIR="~/Models/hierarchical_yolo_species_only_models"
+WORKSPACE="$HOME/datasets/gfisher_species_only_hierarchical_workspace"
+MODEL_DIR="$HOME/Models/hierarchical_yolo_species_only_models"
 VERSION="1.0.0"
 FLAT_EPOCHS=80
 FINAL_EPOCHS=50
