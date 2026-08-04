@@ -54,7 +54,7 @@ def main():
     print(f"Identified {len(species_names)} species-level (binomial) categories.")
 
     # Phase 2: Filter the JSON splits
-    print(f"\n--- Phase 2: Purging Non-Species Annotations & Orphans ---")
+    print(f"\n--- Phase 2: Purging Non-Species Annotations (Retaining Orphans as Background) ---")
     splits = ['train.json', 'val.json', 'test.json']
     for split in splits:
         in_path = os.path.join(args.staging_source, split)
@@ -70,14 +70,31 @@ def main():
         orig_img_count = len(coco_dict.get('images', []))
         orig_ann_count = len(coco_dict.get('annotations', []))
         
-        filtered_dict = coco_filter_categories(coco_dict, species_names)
+        keep_set = set(species_names)
+        filtered_categories = [cat for cat in coco_dict.get('categories', []) if cat['name'] in keep_set]
+        valid_cat_ids = {cat['id'] for cat in filtered_categories}
+        
+        filtered_annotations = [ann for ann in coco_dict.get('annotations', []) if ann['category_id'] in valid_cat_ids]
+        
+        # Reconstruct the dataset dictionary, explicitly passing the original images list
+        filtered_dict = {
+            'images': coco_dict.get('images', []), 
+            'annotations': filtered_annotations,
+            'categories': filtered_categories,
+            'info': coco_dict.get('info', {}),
+            'licenses': coco_dict.get('licenses', [])
+        }
+        
+        orig_annotated_image_ids = {ann['image_id'] for ann in coco_dict.get('annotations', [])}
+        new_annotated_image_ids = {ann['image_id'] for ann in filtered_annotations}
+        orphans_retained = len(orig_annotated_image_ids - new_annotated_image_ids)
         
         new_img_count = len(filtered_dict.get('images', []))
         new_ann_count = len(filtered_dict.get('annotations', []))
         
         print(f"Processed {split}:")
         print(f"  -> Annotations: {orig_ann_count} -> {new_ann_count} (Dropped {orig_ann_count - new_ann_count})")
-        print(f"  -> Images:      {orig_img_count} -> {new_img_count} (Dropped {orig_img_count - new_img_count} true orphans)")
+        print(f"  -> Images:      {orig_img_count} -> {new_img_count} (Retained {orphans_retained} orphans as background)")
         
         with open(out_path, 'w') as f:
             json.dump(filtered_dict, f)
