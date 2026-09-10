@@ -55,10 +55,13 @@ def main():
     print("\n--- Phase 3: Dataset Splitting & URL Injection ---")
     
     # Inject coco_url so pycocowriter can download the images natively
-    print("Injecting Azure blob URLs into image metadata...")
+    print("Injecting Azure blob URLs into image metadata and flattening filenames safely...")
     base_azure_url = "https://lilawildlife.blob.core.windows.net/lila-wildlife/community-fish-detection-dataset/"
     for img in cfd_coco['images']:
+        # Store the full URL to the nested file
         img['coco_url'] = base_azure_url + img['file_name']
+        # Replace slashes with underscores to flatten the directory structure without name collisions
+        img['file_name'] = img['file_name'].replace('/', '_').replace('\\', '_')
 
     # For now, we are dumping EVERYTHING into a single train.json (see discussion).
     train_path = os.path.join(data_dir, "train.json")
