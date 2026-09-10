@@ -41,12 +41,30 @@ def main():
     print("\n--- Phase 2: Category Remapping ---")
     print("Mapping 'fish' -> 'Chordata' and dropping 'empty'...")
     
-    # Update category name
-    assert len(cfd_coco['categories']) == 1
-    cfd_coco['categories'][0]['name'] = 'Chordata'
-            
-    # Note: We keep category 'empty' (id 0) for now, or filter it depending on YOLO needs.
-    # Usually, YOLO handles background automatically, so native empty images are fine.
+    # Validate strict dataset assumptions
+    categories = cfd_coco.get('categories', [])
+    assert len(categories) == 2, f"Expected exactly 2 categories ('fish', 'empty'), found {len(categories)}"
+    
+    cat_names = {c['name']: c['id'] for c in categories}
+    assert 'fish' in cat_names, "Missing expected category: 'fish'"
+    assert 'empty' in cat_names, "Missing expected category: 'empty'"
+    
+    empty_id = cat_names['empty']
+    fish_id = cat_names['fish']
+
+    # Update categories: keep only 'fish' and remap its name to 'Chordata'
+    cfd_coco['categories'] = [{'id': fish_id, 'name': 'Chordata'}]
+    
+    # Filter out dummy 'empty' annotations
+    print(f"Purging dummy annotations for 'empty' category (ID: {empty_id})...")
+    original_ann_count = len(cfd_coco.get('annotations', []))
+    cfd_coco['annotations'] = [
+        ann for ann in cfd_coco.get('annotations', []) 
+        if ann.get('category_id') != empty_id
+    ]
+    
+    removed_count = original_ann_count - len(cfd_coco['annotations'])
+    print(f"Successfully dropped {removed_count} dummy annotations.")
 
     # Phase 3 & 4: Dataset Splitting, URL Injection, and Image Materialization
     print("\n--- Phase 3 & 4: Metadata Flattening & Image Materialization ---")
