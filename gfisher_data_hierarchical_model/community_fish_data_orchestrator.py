@@ -5,8 +5,6 @@ import urllib.request
 import zipfile
 import io
 
-import pycocowriter.coco2yolo
-
 CFD_JSON_ZIP_URL = "https://lilawildlife.blob.core.windows.net/lila-wildlife/community-fish-detection-dataset/community_fish_detection_dataset.json.zip"
 
 def main():
@@ -14,8 +12,8 @@ def main():
     parser.add_argument(
         '--data_dir', 
         type=str, 
-        default=os.path.expanduser('~/datasets/cfd'),
-        help="Target directory for the processed dataset (default: ~/datasets/cfd)"
+        default=os.path.expanduser('~/datasets/community_fish_staging'),
+        help="Target directory for the processed dataset (default: ~/datasets/community_fish_staging)"
     )
     args = parser.parse_args()
     
@@ -44,72 +42,76 @@ def main():
     print("Mapping 'fish' -> 'Chordata' and dropping 'empty'...")
     
     # Update category name
-    for cat in cfd_coco.get('categories', []):
-        if cat['name'].lower() == 'fish':
-            cat['name'] = 'Chordata'
+    assert len(cfd_coco['categories']) == 1
+    cfd_coco['categories'][0]['name'] = 'Chordata'
             
     # Note: We keep category 'empty' (id 0) for now, or filter it depending on YOLO needs.
     # Usually, YOLO handles background automatically, so native empty images are fine.
 
-    # Phase 3: Train/Val Consolidation
-    print("\n--- Phase 3: Dataset Splitting & URL Injection ---")
+    # Phase 3 & 4: Dataset Splitting, URL Injection, and Image Materialization
+    print("\n--- Phase 3 & 4: Metadata Flattening & Image Materialization ---")
     
-    # Inject coco_url so pycocowriter can download the images natively
-    print("Injecting Azure blob URLs into image metadata and flattening filenames safely...")
+    try:
+        from google.cloud.storage import Client, transfer_manager
+    except ImportError:
+        raise ImportError("❌ The 'google-cloud-storage' package is required. Run: pip install google-cloud-storage")
+
+    print("Connecting to public GCP bucket anonymously...")
+    # Anonymous client completely bypasses local credential requests!
+    storage_client = Client.create_anonymous_client()
+    bucket = storage_client.bucket("public-datasets-lila")
+
+    print("Flattening filenames in JSON and preparing download queue...")
+    blob_file_pairs = []
+    
+    # Base azure url for coco_url injection (just in case you need standard COCO URLs downstream)
     base_azure_url = "https://lilawildlife.blob.core.windows.net/lila-wildlife/community-fish-detection-dataset/"
+    
     for img in cfd_coco['images']:
-        # Store the full URL to the nested file
-        img['coco_url'] = base_azure_url + img['file_name']
-        # Replace slashes with underscores to flatten the directory structure without name collisions
-        img['file_name'] = img['file_name'].replace('/', '_').replace('\\', '_')
+        original_file_name = img['file_name']  # e.g., 'JPEGImages/torsi_20190716-021037.129.JPG'
+        
+        # Inject coco_url to maintain standard COCO conventions
+        img['coco_url'] = base_azure_url + original_file_name
+        
+        # Flatten the filename for YOLO compatibility (strip 'JPEGImages/' entirely)
+        flat_name = original_file_name.replace('JPEGImages/', '').replace('/', '_').replace('\\', '_')
+        img['file_name'] = flat_name
+        
+        # Setup the direct download mapping (GCP Source Blob -> Flat Local File)
+        blob_path = f"community-fish-detection-dataset/{original_file_name}"
+        dest_path = os.path.join(data_dir, flat_name)
+        
+        # Only queue for download if it isn't already on disk
+        if not os.path.exists(dest_path):
+            blob = bucket.blob(blob_path)
+            blob_file_pairs.append((blob, dest_path))
 
     # For now, we are dumping EVERYTHING into a single train.json (see discussion).
     train_path = os.path.join(data_dir, "train.json")
-    
     print(f"Saving all {len(cfd_coco['images'])} images to Train Split: {train_path}")
     with open(train_path, 'w') as f:
         json.dump(cfd_coco, f)
 
-    # Phase 4: Image Materialization
-    print("\n--- Phase 4: Image Materialization ---")
-    import subprocess
-    import shutil
-    
-    jpeg_dir = os.path.join(data_dir, "JPEGImages")
-    
-    if not os.path.exists(jpeg_dir):
-        print("Images not found locally. Initiating cloud-native download via gsutil...")
-        gsutil_cmd = [
-            "gsutil", "-m", "cp", "-r", 
-            "gs://public-datasets-lila/community-fish-detection-dataset/JPEGImages", 
-            data_dir
-        ]
-        print(f"Running command: {' '.join(gsutil_cmd)}")
-        try:
-            subprocess.run(gsutil_cmd, check=True)
-        except FileNotFoundError:
-            raise RuntimeError("❌ 'gsutil' command not found. Please install the Google Cloud SDK to download the images.")
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"❌ Download failed with error: {e}")
-
-    if os.path.exists(jpeg_dir):
-        print("Found downloaded 'JPEGImages' directory. Flattening structure to match JSON...")
-        file_count = 0
-        for root, _, files in os.walk(jpeg_dir):
-            for file in files:
-                full_old_path = os.path.join(root, file)
-                # Ensure the relative path matches the original 'file_name' in JSON
-                rel_path = os.path.relpath(full_old_path, data_dir)
-                # Replace Windows and Unix separators to match the JSON logic
-                new_filename = rel_path.replace(os.sep, '_').replace('/', '_').replace('\\', '_')
-                full_new_path = os.path.join(data_dir, new_filename)
-                
-                os.rename(full_old_path, full_new_path)
-                file_count += 1
-                
-        print(f"Successfully flattened {file_count} images.")
-        print("Cleaning up empty directories...")
-        shutil.rmtree(jpeg_dir)
+    if blob_file_pairs:
+        print(f"\nInitiating high-speed concurrent download of {len(blob_file_pairs)} images...")
+        print("Using google.cloud.storage transfer_manager (handles multiplexing automatically).")
+        
+        # transfer_manager uses ProcessPoolExecutor by default. 
+        # 32 workers is the sweet spot for maximizing bandwidth without starving CPU context switching.
+        results = transfer_manager.download_many(
+            blob_file_pairs,
+            max_workers=32,
+            raise_exception=False
+        )
+        
+        success_count = sum(1 for result in results if not isinstance(result, Exception))
+        fail_count = len(results) - success_count
+        
+        print(f"✅ Successfully downloaded {success_count} images.")
+        if fail_count > 0:
+            print(f"⚠️ Failed to download {fail_count} images. (Check your internet connection or rate limits)")
+    else:
+        print("\n✅ All images already exist locally. Skipping download.")
 
     print("\n" + "=" * 60)
     print(f"✅ CFD JSON Pre-Processing Complete! The staging directory is ready at: {data_dir}")
