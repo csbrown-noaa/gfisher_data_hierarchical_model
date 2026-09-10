@@ -66,6 +66,16 @@ def main():
     removed_count = original_ann_count - len(cfd_coco['annotations'])
     print(f"Successfully dropped {removed_count} dummy annotations.")
 
+    print("Purging images that now have no valid annotations (dropping empty backgrounds)...")
+    valid_image_ids = {ann['image_id'] for ann in cfd_coco['annotations']}
+    original_img_count = len(cfd_coco.get('images', []))
+    cfd_coco['images'] = [
+        img for img in cfd_coco.get('images', []) 
+        if img.get('id') in valid_image_ids
+    ]
+    dropped_img_count = original_img_count - len(cfd_coco['images'])
+    print(f"Successfully dropped {dropped_img_count} empty images.")
+
     # Phase 3 & 4: Dataset Splitting, URL Injection, and Image Materialization
     print("\n--- Phase 3 & 4: Metadata Flattening & Image Materialization ---")
     
