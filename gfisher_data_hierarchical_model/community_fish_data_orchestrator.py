@@ -72,8 +72,44 @@ def main():
 
     # Phase 4: Image Materialization
     print("\n--- Phase 4: Image Materialization ---")
-    print("Executing concurrent image downloads via pycocowriter...")
-    pycocowriter.coco2yolo.download_coco_images(data_dir, data_dir)
+    import subprocess
+    import shutil
+    
+    jpeg_dir = os.path.join(data_dir, "JPEGImages")
+    
+    if not os.path.exists(jpeg_dir):
+        print("Images not found locally. Initiating cloud-native download via gsutil...")
+        gsutil_cmd = [
+            "gsutil", "-m", "cp", "-r", 
+            "gs://public-datasets-lila/community-fish-detection-dataset/JPEGImages", 
+            data_dir
+        ]
+        print(f"Running command: {' '.join(gsutil_cmd)}")
+        try:
+            subprocess.run(gsutil_cmd, check=True)
+        except FileNotFoundError:
+            raise RuntimeError("❌ 'gsutil' command not found. Please install the Google Cloud SDK to download the images.")
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"❌ Download failed with error: {e}")
+
+    if os.path.exists(jpeg_dir):
+        print("Found downloaded 'JPEGImages' directory. Flattening structure to match JSON...")
+        file_count = 0
+        for root, _, files in os.walk(jpeg_dir):
+            for file in files:
+                full_old_path = os.path.join(root, file)
+                # Ensure the relative path matches the original 'file_name' in JSON
+                rel_path = os.path.relpath(full_old_path, data_dir)
+                # Replace Windows and Unix separators to match the JSON logic
+                new_filename = rel_path.replace(os.sep, '_').replace('/', '_').replace('\\', '_')
+                full_new_path = os.path.join(data_dir, new_filename)
+                
+                os.rename(full_old_path, full_new_path)
+                file_count += 1
+                
+        print(f"Successfully flattened {file_count} images.")
+        print("Cleaning up empty directories...")
+        shutil.rmtree(jpeg_dir)
 
     print("\n" + "=" * 60)
     print(f"✅ CFD JSON Pre-Processing Complete! The staging directory is ready at: {data_dir}")
