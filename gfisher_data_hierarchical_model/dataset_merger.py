@@ -53,9 +53,9 @@ def build_mega_dataset(source_dirs: list[str], target_dir: str) -> None:
                     dicts_to_merge.append(coco_dict)
                     
                     # Deduce the physical image directory corresponding to this JSON
-                    # e.g., if json_path is 'sdir/mytrain.json', img_dir is 'sdir/mytrain'
+                    # e.g., if json_path is 'sdir/mytrain.json', img_dir is 'sdir/mytrain/images'
                     img_dir_name = os.path.splitext(os.path.basename(json_path))[0]
-                    source_img_dir = os.path.join(sdir, img_dir_name)
+                    source_img_dir = os.path.join(sdir, img_dir_name, "images")
                     image_sources.append((source_img_dir, coco_dict))
 
         if dicts_to_merge:
@@ -70,8 +70,8 @@ def build_mega_dataset(source_dirs: list[str], target_dir: str) -> None:
             print("Hard-linking associated images...")
             link_count = 0
             
-            # Canonical target directory for this split (e.g., target_dir/train/)
-            target_img_dir = os.path.join(target_dir, split)
+            # Canonical target directory for this split (e.g., target_dir/train/images/)
+            target_img_dir = os.path.join(target_dir, split, "images")
             
             for source_img_dir, coco_data in image_sources:
                 for img in coco_data.get('images', []):
