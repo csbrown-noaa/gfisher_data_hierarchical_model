@@ -92,29 +92,34 @@ def main():
     print("Flattening filenames in JSON and preparing download queue...")
     blob_file_pairs = []
     
-    # Base azure url for coco_url injection (just in case you need standard COCO URLs downstream)
+    # Create the physical 'train' directory to match standard staging structure
+    train_img_dir = os.path.join(data_dir, "train")
+    os.makedirs(train_img_dir, exist_ok=True)
+    
+    # Base azure url for coco_url injection
     base_azure_url = "https://lilawildlife.blob.core.windows.net/lila-wildlife/community-fish-detection-dataset/"
     
     for img in cfd_coco['images']:
-        original_file_name = img['file_name']  # e.g., 'JPEGImages/torsi_20190716-021037.129.JPG'
+        original_file_name = img['file_name']
         
         # Inject coco_url to maintain standard COCO conventions
         img['coco_url'] = base_azure_url + original_file_name
         
-        # Flatten the filename for YOLO compatibility (strip 'JPEGImages/' entirely)
+        # Flatten the filename for YOLO compatibility and strip redundant JPEGImages
         flat_name = original_file_name.replace('JPEGImages/', '').replace('/', '_').replace('\\', '_')
         img['file_name'] = flat_name
         
-        # Setup the direct download mapping (GCP Source Blob -> Flat Local File)
+        # Setup the direct download mapping
+        # Download into the physical 'train' folder, but keep the JSON flat
         blob_path = f"community-fish-detection-dataset/{original_file_name}"
-        dest_path = os.path.join(data_dir, flat_name)
+        dest_path = os.path.join(train_img_dir, flat_name)
         
         # Only queue for download if it isn't already on disk
         if not os.path.exists(dest_path):
             blob = bucket.blob(blob_path)
             blob_file_pairs.append((blob, dest_path))
 
-    # For now, we are dumping EVERYTHING into a single train.json (see discussion).
+    # Save the train.json in the root of the data_dir
     train_path = os.path.join(data_dir, "train.json")
     print(f"Saving all {len(cfd_coco['images'])} images to Train Split: {train_path}")
     with open(train_path, 'w') as f:
@@ -138,6 +143,32 @@ def main():
         print(f"✅ Successfully downloaded {success_count} images.")
         if fail_count > 0:
             print(f"⚠️ Failed to download {fail_count} images. (Check your internet connection or rate limits)")
+            
+            if args.drop_missing_images:
+                print("Purging failed images from the JSON metadata to prevent downstream crashes...")
+                
+                failed_filenames = set()
+                for (blob, dest_path), result in zip(blob_file_pairs, results):
+                    if isinstance(result, Exception):
+                        failed_filenames.add(os.path.basename(dest_path))
+                
+                cfd_coco['images'] = [
+                    img for img in cfd_coco['images'] 
+                    if img['file_name'] not in failed_filenames
+                ]
+                
+                valid_image_ids = {img['id'] for img in cfd_coco['images']}
+                cfd_coco['annotations'] = [
+                    ann for ann in cfd_coco['annotations'] 
+                    if ann['image_id'] in valid_image_ids
+                ]
+                
+                print(f"Rewriting {train_path} to safely exclude the {fail_count} missing images.")
+                with open(train_path, 'w') as f:
+                    json.dump(cfd_coco, f)
+            else:
+                print("💡 Tip: To automatically remove these missing images from the JSON metadata,")
+                print("   re-run this script with the --drop_missing_images flag.")
     else:
         print("\n✅ All images already exist locally. Skipping download.")
 
