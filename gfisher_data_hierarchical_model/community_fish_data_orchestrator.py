@@ -15,6 +15,11 @@ def main():
         default=os.path.expanduser('~/datasets/community_fish_staging'),
         help="Target directory for the processed dataset (default: ~/datasets/community_fish_staging)"
     )
+    parser.add_argument(
+        '--drop_missing_images',
+        action='store_true',
+        help="Automatically purge images from the JSON if they fail to download."
+    )
     args = parser.parse_args()
     
     data_dir = args.data_dir
