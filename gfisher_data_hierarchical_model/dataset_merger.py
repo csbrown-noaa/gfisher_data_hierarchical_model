@@ -2,6 +2,7 @@ import os
 import json
 import argparse
 from pycocowriter import cocomerge
+import pycocowriter.coco2yolo
 
 def merge_hierarchies(base, update):
     """
@@ -31,42 +32,55 @@ def build_mega_dataset(source_dirs: list[str], target_dir: str) -> None:
     master_hierarchy = {}
 
     for split in splits:
-        split_filename = f"{split}.json"
         dicts_to_merge = []
         image_sources = [] 
         
         print(f"\n--- Processing Split: {split.upper()} ---")
         
         for sdir in source_dirs:
-            file_path = os.path.join(sdir, split_filename)
-            if os.path.exists(file_path):
-                print(f"Loading {split_filename} from {sdir}...")
-                with open(file_path, 'r') as f:
+            # Dynamically discover all COCO JSON files for this dataset split
+            split_files = pycocowriter.coco2yolo.discover_coco_files(sdir)
+            found_jsons = split_files.get(split, [])
+            
+            if not found_jsons:
+                print(f"No '{split}' split found in {sdir}. Skipping.")
+                continue
+                
+            for json_path in found_jsons:
+                print(f"Loading {os.path.basename(json_path)} from {sdir}...")
+                with open(json_path, 'r') as f:
                     coco_dict = json.load(f)
                     dicts_to_merge.append(coco_dict)
-                    image_sources.append((sdir, coco_dict))
-            else:
-                print(f"No {split_filename} found in {sdir}. Skipping.")
+                    
+                    # Deduce the physical image directory corresponding to this JSON
+                    # e.g., if json_path is 'sdir/mytrain.json', img_dir is 'sdir/mytrain'
+                    img_dir_name = os.path.splitext(os.path.basename(json_path))[0]
+                    source_img_dir = os.path.join(sdir, img_dir_name)
+                    image_sources.append((source_img_dir, coco_dict))
 
         if dicts_to_merge:
             print(f"Merging {len(dicts_to_merge)} datasets for {split} split...")
             merged_dict = cocomerge.coco_merge(*dicts_to_merge)
             
-            target_split_path = os.path.join(target_dir, split_filename)
+            target_split_path = os.path.join(target_dir, f"{split}.json")
             with open(target_split_path, 'w') as f:
                 json.dump(merged_dict, f)
-            print(f"Saved merged {split_filename} -> {target_split_path}")
+            print(f"Saved merged {split}.json -> {target_split_path}")
 
             print("Hard-linking associated images...")
             link_count = 0
-            for sdir, coco_data in image_sources:
+            
+            # Canonical target directory for this split (e.g., target_dir/train/)
+            target_img_dir = os.path.join(target_dir, split)
+            
+            for source_img_dir, coco_data in image_sources:
                 for img in coco_data.get('images', []):
                     file_name = img.get('file_name')
                     if not file_name:
                         continue
                         
-                    src_path = os.path.join(sdir, file_name)
-                    dst_path = os.path.join(target_dir, file_name)
+                    src_path = os.path.join(source_img_dir, file_name)
+                    dst_path = os.path.join(target_img_dir, file_name)
                     
                     if os.path.exists(src_path):
                         if not os.path.exists(dst_path):
